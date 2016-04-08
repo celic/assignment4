@@ -26,7 +26,8 @@
 /* Global Vars *************************************************************/
 /***************************************************************************/
 
-unsigned int **g_MATRIX=NULL;
+unsigned int **g_MATRIX = NULL;
+unsigned int **g_MATRIX_TRANS = NULL;
 
 /***************************************************************************/
 /* Function Decs ***********************************************************/
@@ -63,8 +64,8 @@ int main(int argc, char *argv[])
 
     MPI_Barrier( MPI_COMM_WORLD );
 
-    int rows_per_rank = SIZE / mpi_myrank;
-    allocate_and_init_cells(mpi_myrank);
+    int rows_per_rank = SIZE / mpi_commsize; 
+    allocate_and_init_cells(mpi_myrank, rows_per_rank);
 
     // perform barrier to end parallel commands
     MPI_Barrier( MPI_COMM_WORLD );
@@ -83,17 +84,27 @@ int main(int argc, char *argv[])
 /* Function: allocate_and_init_cells ***************************************/
 /***************************************************************************/
 
-void allocate_and_init_cells(int mpi_myrank)
+void allocate_and_init_cells(int mpi_myrank, int rows_per_rank)
 {
-    // allocate SIZE row arrays
-    g_MATRIX = (unsigned int**)calloc(SIZE, sizeof(unsigned int*));
+    // allocate rows_per_rank row arrays
+    g_MATRIX = (unsigned int**) calloc(rows_per_rank, sizeof(unsigned int*));
 
-    // allocate SIZE column arrays
+    // allocate a column array for each row
     int i, j;
+    for(i = 0; i < rows_per_rank; i++){
+
+        // allocate SIZE arrays
+        g_MATRIX[i] = (unsigned int*) calloc(SIZE, sizeof(unsigned int));
+    }
+
+    // allocate SIZE row arrays for transpose
+    g_MATRIX_TRANS = (unsigned int**) calloc(SIZE, sizeof(unsigned int*));
+
+    // allocate a column array for each row
     for(i = 0; i < SIZE; i++){
 
-        // allocate SIZE arrays of size SIZE
-        g_MATRIX[i] = (unsigned int*) calloc(SIZE, sizeof(unsigned int));
+        // allocate rows_per_rank arrays
+        g_MATRIX_TRANS[i] = (unsigned int*) calloc(rows_per_rank, sizeof(unsigned int*));
     }
 
     int cur_row;
@@ -101,15 +112,13 @@ void allocate_and_init_cells(int mpi_myrank)
     // iterate over each row
     for(i = 0; i < SIZE; i++){
 
-        // do not assign a value to the ghost rows
-        if(i == 0 || i == rows_per_rank-1) continue;
-
         // iterate over each column
-        for(j = 0; j < g_y_cell_size; j++){
+        for(j = 0; j < rows_per_rank; j++){
 
             // assign random value to cell
             cur_row = ((mpi_myrank * (rows_per_rank-2)) + i);
-            g_MATRIX[i][j] = ((GenVal(cur_row) >= .5) ? DEAD : ALIVE);
+            g_MATRIX[i][j] = ((GenVal(cur_row) >= .5) ? 0 : 1);
+            g_MATRIX_TRANS[j][i] = g_MATRIX[i][j];
         }
     }
 }
