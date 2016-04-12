@@ -2,8 +2,7 @@
 
 Questions:
 
-* RNG provides doubles, what should be the conversion to unsigned int
-
+* RNG provides doubles, what should be the conversion to unsigned int?
 
 Runs:
 
@@ -29,7 +28,20 @@ Compact refers to having no space between data of separate ranks.
 
 Timing:
 
-* Total execution time
+* Compute execution time
 * I/O time
 
 Time them both separately. Total execution includes I/O in the end. Use the clock cycles counter with 1.6GHz clock rate.
+
+Looking at 96 data points total. 
+
+Graph 1:
+* 3 plot lines, 32 node, 64 node, 128 node
+* Threads per node (x-axis)
+* Compute execution time (y-axis)
+
+Graph 2-4:
+* 2 lines per graph, 8MB boundary or compact
+* Level of file sharing, ranks per file (x-axis)
+* I/O bandwidth (y-axis)
+
