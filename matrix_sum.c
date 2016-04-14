@@ -44,7 +44,7 @@ void allocate_and_init_cells();
 int main(int argc, char *argv[])
 {
     // allocate initial variables
-    //int i = 0;
+    int i = 0, j = 0;
     int mpi_myrank;
     int mpi_commsize;
     unsigned long long start_cycle_time = 0;
@@ -77,7 +77,14 @@ int main(int argc, char *argv[])
     MPI_Barrier( MPI_COMM_WORLD );
 
     // print matrix for testing
-    printf("Row %d: %d %d %d\n", mpi_myrank, g_MATRIX[0][0], g_MATRIX[0][1], g_MATRIX[0][2]);
+    for(i = 0; i < rows_per_rank; i++){
+        int cur_row = (rows_per_rank * mpi_myrank) + i;
+        printf("Row %d: ", cur_row);
+        for(j = 0; j < SIZE; j++){
+            printf("%d ", g_MATRIX[i][j]);
+        }
+        printf("\n");
+    }
 
     // end MPI_Wtime for master
     if(mpi_myrank == 0){
@@ -106,15 +113,15 @@ void allocate_and_init_cells(int mpi_myrank, int rows_per_rank)
         g_MATRIX[i] = (unsigned int*) calloc(SIZE, sizeof(unsigned int));
     }
 
-    // // allocate SIZE row arrays for transpose
-    // g_MATRIX_TRANS = (unsigned int**) calloc(SIZE, sizeof(unsigned int*));
+    // allocate SIZE row arrays for transpose
+    g_MATRIX_TRANS = (unsigned int**) calloc(SIZE, sizeof(unsigned int*));
 
-    // // allocate a column array for each row
-    // for(i = 0; i < SIZE; i++){
+    // allocate a column array for each row
+    for(i = 0; i < SIZE; i++){
 
-    //     // allocate rows_per_rank arrays
-    //     g_MATRIX_TRANS[i] = (unsigned int*) calloc(rows_per_rank, sizeof(unsigned int*));
-    // }
+        // allocate rows_per_rank arrays
+        g_MATRIX_TRANS[i] = (unsigned int*) calloc(rows_per_rank, sizeof(unsigned int*));
+    }
 
     int cur_row;
 
@@ -127,7 +134,6 @@ void allocate_and_init_cells(int mpi_myrank, int rows_per_rank)
             // assign random value to cell
             cur_row = ((mpi_myrank * rows_per_rank) + i);
             g_MATRIX[i][j] = floor(GenVal(cur_row) * MAX_INT);
-            //g_MATRIX_TRANS[j][i] = g_MATRIX[i][j];
         }
     }
 }
