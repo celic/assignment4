@@ -7,20 +7,21 @@
 /* Includes ****************************************************************/
 /***************************************************************************/
 
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-#include<errno.h>
-#include<math.h>
-#include<clcg4.h>
-#include<mpi.h>
-//#include<hwi/include/bqc/A2_inlines.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <math.h>
+#include <clcg4.h>
+#include <mpi.h>
+//#include <hwi/include/bqc/A2_inlines.h>
+#include <pthread.h>
 
 /***************************************************************************/
 /* Defines *****************************************************************/
 /***************************************************************************/
 
-#define SIZE 3
+#define SIZE 6
 #define PTHREADS 3
 #define MAX_INT 32767
 
@@ -68,14 +69,36 @@ int main(int argc, char *argv[])
 
     MPI_Barrier( MPI_COMM_WORLD );
 
+    // allocate cells randomly
     int rows_per_rank = SIZE / mpi_commsize; 
     allocate_and_init_cells(mpi_myrank, rows_per_rank);
 
-    printf("Matrix set\n");
-
-    // perform barrier to end parallel commands
     MPI_Barrier( MPI_COMM_WORLD );
 
+#ifdef DEBUG
+    printf("Matrix set\n");
+#endif
+
+    // perform barrier sync generation
+    MPI_Barrier( MPI_COMM_WORLD );
+
+    // determine transpose of region
+    // MPI_Isend(g_GOL_CELL[rows_per_rank], g_y_cell_size, MPI_UNSIGNED, bot_dest, 2*mpi_myrank+1, MPI_COMM_WORLD, &req[1]);
+    // receive ghost rows
+    // MPI_Irecv(g_GOL_CELL[0], g_y_cell_size, MPI_UNSIGNED, top_dest, 2*top_dest, MPI_COMM_WORLD, &req[2]);
+
+    // spawn threads
+    pthread_t threads[PTHREADS];
+    for(i = 0; i < PTHREADS; i++){
+
+        int rc = pthread_create(&threads[i], NULL, compute_sum);
+        if(rc) exit(-1);
+    }
+
+    // compute result and store in place (to not waste memory)
+
+
+#ifdef DEBUG
     // print matrix for testing
     for(i = 0; i < rows_per_rank; i++){
         int cur_row = (rows_per_rank * mpi_myrank) + i;
@@ -85,6 +108,9 @@ int main(int argc, char *argv[])
         }
         printf("\n");
     }
+#endif
+
+    // export to file
 
     // end MPI_Wtime for master
     if(mpi_myrank == 0){
@@ -95,6 +121,7 @@ int main(int argc, char *argv[])
     MPI_Finalize();
     return 0;
 }
+
 
 /***************************************************************************/
 /* Function: allocate_and_init_cells ***************************************/
@@ -139,4 +166,13 @@ void allocate_and_init_cells(int mpi_myrank, int rows_per_rank)
 }
 
 
+/***************************************************************************/
+/* Function: compute_sum ***************************************************/
+/***************************************************************************/
 
+void* compute_sum()
+{
+    
+
+    pthread_exit(NULL);
+}
