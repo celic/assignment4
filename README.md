@@ -1,8 +1,6 @@
 # assignment4
 
-Questions:
-
-* RNG provides doubles, what should be the conversion to unsigned int?
+Turns out Carothers made a mistake and there are no compact cases based on the specification. Follow the specification and relabel the compact to have a small boundary between ranks.
 
 Runs:
 
