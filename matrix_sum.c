@@ -16,6 +16,7 @@
 #include <mpi.h>
 //#include <hwi/include/bqc/A2_inlines.h>
 #include <pthread.h>
+#include <stdint.h>
 
 /***************************************************************************/
 /* Defines *****************************************************************/
@@ -38,6 +39,16 @@ unsigned int **g_MATRIX_TRANS = NULL;
 
 void allocate_and_init_cells();
 void* compute_sum(void* args);
+
+/***************************************************************************/
+/* Pthread Decs ************************************************************/
+/***************************************************************************/
+struct pthread_params{
+    int num_threads;
+    int rows_per_rank;
+    int thread_num;
+};
+
 
 /***************************************************************************/
 /* Function: Main **********************************************************/
@@ -97,7 +108,6 @@ int main(int argc, char *argv[])
 
     // determine transpose of region
     // MPI_Isend(g_GOL_CELL[rows_per_rank], g_y_cell_size, MPI_UNSIGNED, bot_dest, 2*mpi_myrank+1, MPI_COMM_WORLD, &req[1]);
-    // receive ghost rows
     // MPI_Irecv(g_GOL_CELL[0], g_y_cell_size, MPI_UNSIGNED, top_dest, 2*top_dest, MPI_COMM_WORLD, &req[2]);
 
     if(num_threads > 0){
@@ -106,17 +116,37 @@ int main(int argc, char *argv[])
         pthread_t* threads = calloc(num_threads, sizeof(pthread_t*));
         for(i = 0; i < num_threads; i++){
 
-            int args[3];
-            args[0] = mpi_myrank;
-            args[1] = mpi_commsize;
-            args[2] = i;
-            int rc = pthread_create(&threads[i], NULL, compute_sum, (void*) &args);
+            // prepare args for threads
+            struct pthread_params args;
+            args.num_threads = num_threads;
+            args.rows_per_rank = rows_per_rank;
+            args.thread_num = i;
+
+            // launch threads to compute sum
+            int rc = pthread_create(&threads[i], NULL, compute_sum, &args);
             if(rc) exit(-1);
         }
+
+        // block for threads to complete
+        for(i = 0; i < num_threads; i++){
+
+            int rc = pthread_join(threads[i], NULL);
+            if(rc) exit(-1);
+        }
+
     }else{
 
         // no threads needed, just compute
+        // for each row in the rank
+        for(i = 0; i < rows_per_rank; i++){
 
+            // for each column in the row
+            for(j = 0; j < SIZE; j++){
+
+                // compute the sum and store locally
+                g_MATRIX[i][j] += g_MATRIX_TRANS[i][j];
+            }
+        }
     }
 
     // compute result and store in place (to not waste memory)
@@ -197,11 +227,27 @@ void allocate_and_init_cells(int mpi_myrank, int rows_per_rank)
 
 void* compute_sum(void* args)
 {
-    // iterate over region assigned to the thread
+    // explicitly declare variables (for clarity)
+    struct pthread_params *params = args;
+    int total_threads = (intptr_t)&params->num_threads;
+    int rows_per_rank = (intptr_t)&params->rows_per_rank;
+    int thread_num = (intptr_t)&params->thread_num;
+    int i, j;
 
+    // iterate over all rows owned by rank
+    for(i = 0; i < rows_per_rank; i++){
+    
+        // separate rows evenly for threads
+        if(i % total_threads == thread_num){
 
-    // compute sum and store in place
-    //g_MATRIX[i][j] = g_MATRIX[i][j] + g_MATRIX_TRANS[j][i];
+            // iterate over columns
+            for(j = 0; j < SIZE; j++){
+
+                // compute sum and store in place
+                //g_MATRIX[i][j] += g_MATRIX_TRANS[i][j];
+            }
+        }
+    }
 
     pthread_exit(NULL);
 }
