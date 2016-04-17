@@ -22,13 +22,13 @@
 /***************************************************************************/
 
 #define SIZE 6
-#define PTHREADS 3
 #define MAX_INT 32767
 
 /***************************************************************************/
 /* Global Vars *************************************************************/
 /***************************************************************************/
 
+unsigned int num_threads;
 unsigned int **g_MATRIX = NULL;
 unsigned int **g_MATRIX_TRANS = NULL;
 
@@ -37,6 +37,7 @@ unsigned int **g_MATRIX_TRANS = NULL;
 /***************************************************************************/
 
 void allocate_and_init_cells();
+void* compute_sum(void* args);
 
 /***************************************************************************/
 /* Function: Main **********************************************************/
@@ -45,12 +46,15 @@ void allocate_and_init_cells();
 int main(int argc, char *argv[])
 {
     // allocate initial variables
-    int i = 0, j = 0;
+    int i = 0;
+#ifdef DEBUG
+    int j = 0;
+#endif
     int mpi_myrank;
     int mpi_commsize;
-    unsigned long long start_cycle_time = 0;
-    unsigned long long end_cycle_time = 0;
-    unsigned long long total_cycle_time = 0;
+    //unsigned long long start_cycle_time = 0;
+    //unsigned long long end_cycle_time = 0;
+    //unsigned long long total_cycle_time = 0;
 
     // begin and setup MPI
     MPI_Init( &argc, &argv);
@@ -65,15 +69,24 @@ int main(int argc, char *argv[])
     // init RNG streams, one for each rank
     InitDefault();
 
+    // read in command line argument
+    if(argc != 2){
+        printf("Incorrect number of arguments.\n");
+        printf("Expected 1 argument: number of threads.\n");
+        return -1;
+    }else{
+        num_threads = atoi(argv[1]);
+    }
+
+#ifdef DEBUG
     printf("Params set for %d\n", mpi_myrank);
+#endif
 
     MPI_Barrier( MPI_COMM_WORLD );
 
     // allocate cells randomly
     int rows_per_rank = SIZE / mpi_commsize; 
     allocate_and_init_cells(mpi_myrank, rows_per_rank);
-
-    MPI_Barrier( MPI_COMM_WORLD );
 
 #ifdef DEBUG
     printf("Matrix set\n");
@@ -87,12 +100,23 @@ int main(int argc, char *argv[])
     // receive ghost rows
     // MPI_Irecv(g_GOL_CELL[0], g_y_cell_size, MPI_UNSIGNED, top_dest, 2*top_dest, MPI_COMM_WORLD, &req[2]);
 
-    // spawn threads
-    pthread_t threads[PTHREADS];
-    for(i = 0; i < PTHREADS; i++){
+    if(num_threads > 0){
 
-        int rc = pthread_create(&threads[i], NULL, compute_sum);
-        if(rc) exit(-1);
+        // spawn threads if needed and send to compute sum method
+        pthread_t* threads = calloc(num_threads, sizeof(pthread_t*));
+        for(i = 0; i < num_threads; i++){
+
+            int args[3];
+            args[0] = mpi_myrank;
+            args[1] = mpi_commsize;
+            args[2] = i;
+            int rc = pthread_create(&threads[i], NULL, compute_sum, (void*) &args);
+            if(rc) exit(-1);
+        }
+    }else{
+
+        // no threads needed, just compute
+
     }
 
     // compute result and store in place (to not waste memory)
@@ -115,10 +139,11 @@ int main(int argc, char *argv[])
     // end MPI_Wtime for master
     if(mpi_myrank == 0){
         //end_cycle_time = GetTimeBase();
-        total_cycle_time = end_cycle_time - start_cycle_time;
+        //total_cycle_time = end_cycle_time - start_cycle_time;
     }
 
     MPI_Finalize();
+    pthread_exit(NULL);
     return 0;
 }
 
@@ -170,9 +195,13 @@ void allocate_and_init_cells(int mpi_myrank, int rows_per_rank)
 /* Function: compute_sum ***************************************************/
 /***************************************************************************/
 
-void* compute_sum()
+void* compute_sum(void* args)
 {
-    
+    // iterate over region assigned to the thread
+
+
+    // compute sum and store in place
+    //g_MATRIX[i][j] = g_MATRIX[i][j] + g_MATRIX_TRANS[j][i];
 
     pthread_exit(NULL);
 }
