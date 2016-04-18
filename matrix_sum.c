@@ -24,6 +24,8 @@
 
 #define SIZE 6
 #define MAX_INT 32767
+#define SIZE_OF_INT 4
+#define BOUNDARY 8192
 
 /***************************************************************************/
 /* Global Vars *************************************************************/
@@ -150,9 +152,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    // compute result and store in place (to not waste memory)
-
-
 #ifdef DEBUG
     // print matrix for testing
     for(i = 0; i < rows_per_rank; i++){
@@ -172,7 +171,15 @@ int main(int argc, char *argv[])
     // open file for export
     MPI_File_open(MPI_COMM_WORLD, "sum", MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &output_file);
 
+    // calculate the offset
+    // this much space is used for each rank
+    unsigned long long offset_per_rank = SIZE_OF_INT * SIZE * rows_per_rank;
+
+    // include boundary between ranks
+    unsigned long long total_offset = (offset_per_rank + BOUNDARY) * mpi_myrank;
+
     // export to file based on rank
+
 
 
     // close file
