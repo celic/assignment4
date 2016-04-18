@@ -66,6 +66,7 @@ int main(int argc, char *argv[])
     //unsigned long long start_cycle_time = 0;
     //unsigned long long end_cycle_time = 0;
     //unsigned long long total_cycle_time = 0;
+    MPI_File output_file;
 
     // begin and setup MPI
     MPI_Init( &argc, &argv);
@@ -144,7 +145,7 @@ int main(int argc, char *argv[])
             for(j = 0; j < SIZE; j++){
 
                 // compute the sum and store locally
-                g_MATRIX[i][j] += g_MATRIX_TRANS[i][j];
+                //g_MATRIX[i][j] += g_MATRIX_TRANS[i][j];
             }
         }
     }
@@ -164,7 +165,22 @@ int main(int argc, char *argv[])
     }
 #endif
 
-    // export to file
+#ifdef DEBUG
+    printf("Opening file in %d\n", mpi_myrank);
+#endif
+
+    // open file for export
+    MPI_File_open(MPI_COMM_WORLD, "sum", MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &output_file);
+
+    // export to file based on rank
+
+
+    // close file
+    MPI_File_close(&output_file);
+
+#ifdef DEBUG
+    printf("Closing file in %d\n", mpi_myrank);
+#endif
 
     // end MPI_Wtime for master
     if(mpi_myrank == 0){
