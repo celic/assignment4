@@ -173,14 +173,22 @@ int main(int argc, char *argv[])
 
     // calculate the offset
     // this much space is used for each rank
-    unsigned long long offset_per_rank = SIZE_OF_INT * SIZE * rows_per_rank;
+    MPI_Offset offset_per_rank = SIZE_OF_INT * SIZE * rows_per_rank;
 
-    // include boundary between ranks
-    unsigned long long total_offset = (offset_per_rank + BOUNDARY) * mpi_myrank;
+    // include boundary between ranks and previous rows
+    MPI_Offset total_offset = (offset_per_rank + BOUNDARY) * mpi_myrank;
 
-    // export to file based on rank
+    // align the file pointer
+    MPI_File_seek(output_file, total_offset, MPI_SEEK_SET);
 
+    // for each row in the rank
+    for(i = 0; i < rows_per_rank; i++){
 
+        // write the row
+        MPI_Status status;
+        int io_rc = MPI_File_write(output_file, g_MATRIX[i], SIZE, MPI_INT, &status);
+        if(io_rc) exit(-1);
+    }
 
     // close file
     MPI_File_close(&output_file);
