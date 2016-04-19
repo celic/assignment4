@@ -1,3 +1,4 @@
 .DS_Store
 matrix_sum
 *.o
+*.dat
