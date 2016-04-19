@@ -24,6 +24,8 @@
 
 #define SIZE 6
 #define MAX_INT 32767
+#define SIZE_OF_INT 4
+#define BOUNDARY 8192
 
 /***************************************************************************/
 /* Global Vars *************************************************************/
@@ -66,6 +68,7 @@ int main(int argc, char *argv[])
     //unsigned long long start_cycle_time = 0;
     //unsigned long long end_cycle_time = 0;
     //unsigned long long total_cycle_time = 0;
+    MPI_File output_file;
 
     // begin and setup MPI
     MPI_Init( &argc, &argv);
@@ -144,13 +147,10 @@ int main(int argc, char *argv[])
             for(j = 0; j < SIZE; j++){
 
                 // compute the sum and store locally
-                g_MATRIX[i][j] += g_MATRIX_TRANS[i][j];
+                //g_MATRIX[i][j] += g_MATRIX_TRANS[i][j];
             }
         }
     }
-
-    // compute result and store in place (to not waste memory)
-
 
 #ifdef DEBUG
     // print matrix for testing
@@ -164,7 +164,38 @@ int main(int argc, char *argv[])
     }
 #endif
 
-    // export to file
+#ifdef DEBUG
+    printf("Opening file in %d\n", mpi_myrank);
+#endif
+
+    // open file for export
+    MPI_File_open(MPI_COMM_WORLD, "sum", MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &output_file);
+
+    // calculate the offset
+    // this much space is used for each rank
+    MPI_Offset offset_per_rank = SIZE_OF_INT * SIZE * rows_per_rank;
+
+    // include boundary between ranks and previous rows
+    MPI_Offset total_offset = (offset_per_rank + BOUNDARY) * mpi_myrank;
+
+    // align the file pointer
+    MPI_File_seek(output_file, total_offset, MPI_SEEK_SET);
+
+    // for each row in the rank
+    for(i = 0; i < rows_per_rank; i++){
+
+        // write the row
+        MPI_Status status;
+        int io_rc = MPI_File_write(output_file, g_MATRIX[i], SIZE, MPI_INT, &status);
+        if(io_rc) exit(-1);
+    }
+
+    // close file
+    MPI_File_close(&output_file);
+
+#ifdef DEBUG
+    printf("Closing file in %d\n", mpi_myrank);
+#endif
 
     // end MPI_Wtime for master
     if(mpi_myrank == 0){
