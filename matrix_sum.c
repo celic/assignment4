@@ -169,7 +169,7 @@ int main(int argc, char *argv[])
 #endif
 
     // open file for export
-    MPI_File_open(MPI_COMM_WORLD, "sum", MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &output_file);
+    MPI_File_open(MPI_COMM_WORLD, "sum.dat", MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &output_file);
 
     // calculate the offset
     // this much space is used for each rank
